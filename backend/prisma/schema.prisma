@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String     @id @default(cuid())
+  email            String     @unique
+  password         String
+  name             String?
+  plan             Plan       @default(FREE)
+  stripeCustomerId String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  contracts        Contract[]
+  usageLogs        UsageLog[]
+
+  @@map("users")
+}
+
+model Contract {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileName      String
+  originalName  String
+  storagePath   String
+  fileSize      Int
+  pageCount     Int?
+  status        ContractStatus @default(PENDING)
+  extractedText String?        @db.Text
+  analysis      Json?
+  createdAt     DateTime       @default(now())
+  analyzedAt    DateTime?
+  chatMessages  ChatMessage[]
+
+  @@index([userId])
+  @@map("contracts")
+}
+
+model ChatMessage {
+  id         String      @id @default(cuid())
+  contractId String
+  contract   Contract    @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  role       MessageRole
+  content    String      @db.Text
+  createdAt  DateTime    @default(now())
+
+  @@index([contractId])
+  @@map("chat_messages")
+}
+
+model UsageLog {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     ActionType
+  tokensUsed Int?
+  metadata   Json?
+  createdAt  DateTime   @default(now())
+
+  @@index([userId, createdAt])
+  @@map("usage_logs")
+}
+
+enum Plan {
+  FREE
+  PRO
+  BUSINESS
+}
+
+enum ContractStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  ERROR
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+enum ActionType {
+  ANALYZE
+  GENERATE
+  CHAT
+}
